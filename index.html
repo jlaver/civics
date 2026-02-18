@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Civics Flashcards</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-border: #334155;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --success: #22c55e;
+    --success-bg: #052e16;
+    --fail: #ef4444;
+    --fail-bg: #450a0a;
+    --hint: #f59e0b;
+    --hint-bg: #451a03;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* NAV */
+  nav {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1px solid var(--card-border);
+    padding: 8px;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  nav button {
+    flex: 1;
+    padding: 10px 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  nav button.active {
+    background: var(--primary);
+    color: white;
+  }
+
+  /* SCREENS */
+  .screen { display: none; flex: 1; padding: 16px; overflow-y: auto; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* FLASHCARD */
+  #flashcard-screen { align-items: center; gap: 16px; }
+
+  .session-info {
+    font-size: 14px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .question-number {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .question-text {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .hint-box {
+    display: none;
+    background: var(--hint-bg);
+    border: 1px solid var(--hint);
+    border-radius: 8px;
+    padding: 12px 16px;
+    width: 100%;
+    max-width: 500px;
+    color: var(--hint);
+    font-size: 15px;
+  }
+  .hint-box.visible { display: block; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 14px 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: white;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-hint { background: var(--hint); color: #000; }
+  .btn-reveal { background: var(--primary); }
+  .btn-correct { background: var(--success); color: #000; }
+  .btn-fail { background: var(--fail); }
+  .btn-next { background: var(--primary); }
+  .btn-disabled { opacity: 0.4; pointer-events: none; }
+
+  /* ANSWERS */
+  .answers-box {
+    display: none;
+    width: 100%;
+    max-width: 500px;
+  }
+  .answers-box.visible { display: block; }
+
+  .answers-box h3 {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .answer-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 16px;
+  }
+  .answer-item.selected {
+    border-color: var(--success);
+    background: var(--success-bg);
+  }
+  .answer-item input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--success);
+    flex-shrink: 0;
+  }
+
+  .result-banner {
+    display: none;
+    width: 100%;
+    max-width: 500px;
+    padding: 14px;
+    border-radius: var(--radius);
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .result-banner.visible { display: block; }
+  .result-banner.correct { background: var(--success-bg); border: 1px solid var(--success); color: var(--success); }
+  .result-banner.fail { background: var(--fail-bg); border: 1px solid var(--fail); color: var(--fail); }
+
+  /* REPORTS */
+  #reports-screen { gap: 16px; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-card .num { font-size: 28px; font-weight: 700; }
+  .stat-card .label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .filter-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 8px 14px;
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    background: var(--card);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .filter-btn.active {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(59,130,246,0.1);
+  }
+
+  .report-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .report-item {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .report-q { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .report-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .report-stats .correct-stat { color: var(--success); }
+  .report-stats .fail-stat { color: var(--fail); }
+
+  /* SETTINGS */
+  #settings-screen { gap: 16px; }
+  #settings-screen .card { display: flex; flex-direction: column; gap: 12px; }
+  #settings-screen .btn { max-width: 300px; }
+  .file-input { display: none; }
+
+  .reset-btn { background: var(--fail); margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <button class="active" onclick="showScreen('flashcard')">Study</button>
+  <button onclick="showScreen('reports')">Reports</button>
+  <button onclick="showScreen('settings')">Settings</button>
+</nav>
+
+<div id="flashcard-screen" class="screen active">
+  <div class="session-info" id="session-info">Question 0 this session</div>
+  <div class="card">
+    <div class="question-number" id="q-number"></div>
+    <div class="question-text" id="q-text"></div>
+  </div>
+  <div class="hint-box" id="hint-box"></div>
+  <div class="actions" id="pre-reveal-actions">
+    <button class="btn btn-hint" onclick="showHint()">Hint</button>
+    <button class="btn btn-reveal" onclick="revealAnswer()">Reveal Answer</button>
+  </div>
+  <div class="answers-box" id="answers-box">
+    <h3>Acceptable Answers</h3>
+    <div id="answers-list"></div>
+  </div>
+  <div class="actions" id="post-reveal-actions" style="display:none">
+    <button class="btn btn-fail" onclick="recordResult(false)">I Failed</button>
+    <button class="btn btn-correct" onclick="recordResult(true)">I Got It</button>
+  </div>
+  <div class="result-banner" id="result-banner"></div>
+  <div class="actions" id="next-action" style="display:none">
+    <button class="btn btn-next" onclick="nextQuestion()">Next Question</button>
+  </div>
+</div>
+
+<div id="reports-screen" class="screen">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="num" id="stat-total">0</div><div class="label">Attempted</div></div>
+    <div class="stat-card"><div class="num" id="stat-correct" style="color:var(--success)">0</div><div class="label">Correct</div></div>
+    <div class="stat-card"><div class="num" id="stat-pct">0%</div><div class="label">Accuracy</div></div>
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" data-filter="most-missed" onclick="setFilter('most-missed',this)">Most Missed</button>
+    <button class="filter-btn" data-filter="most-correct" onclick="setFilter('most-correct',this)">Most Correct</button>
+    <button class="filter-btn" data-filter="unseen" onclick="setFilter('unseen',this)">Never Seen</button>
+  </div>
+  <div class="report-list" id="report-list"></div>
+</div>
+
+<div id="settings-screen" class="screen">
+  <div class="card">
+    <h3>Data Management</h3>
+    <button class="btn btn-primary" style="background:var(--primary)" onclick="exportData()">Export Progress (JSON)</button>
+    <button class="btn btn-primary" style="background:var(--primary)" onclick="document.getElementById('import-file').click()">Import Progress (JSON)</button>
+    <input type="file" id="import-file" class="file-input" accept=".json" onchange="importData(event)">
+    <button class="btn reset-btn" onclick="resetData()">Reset All Progress</button>
+  </div>
+</div>
+
+<script>
+// ============ CIVICS QUESTIONS ============
+const QUESTIONS = [
+  {id:1, q:"What is the supreme law of the land?", a:["the Constitution"], hint:"It was written in 1787.", category:"Principles of American Democracy"},
+  {id:2, q:"What does the Constitution do?", a:["sets up the government","defines the government","protects basic rights of Americans"], hint:"It has three main purposes.", category:"Principles of American Democracy"},
+  {id:3, q:"The idea of self-government is in the first three words of the Constitution. What are these words?", a:["We the People"], hint:"Three words that show who holds the power.", category:"Principles of American Democracy"},
+  {id:4, q:"What is an amendment?", a:["a change (to the Constitution)","an addition (to the Constitution)"], hint:"Think about modifying a document.", category:"Principles of American Democracy"},
+  {id:5, q:"What do we call the first ten amendments to the Constitution?", a:["the Bill of Rights"], hint:"It's a 'bill' that protects freedoms.", category:"Principles of American Democracy"},
+  {id:6, q:"What is one right or freedom from the First Amendment?", a:["speech","religion","assembly","press","petition the government"], hint:"There are 5 freedoms. Think about what you can say, believe, or do.", category:"Principles of American Democracy"},
+  {id:7, q:"How many amendments does the Constitution have?", a:["twenty-seven (27)"], hint:"It's between 25 and 30.", category:"Principles of American Democracy"},
+  {id:8, q:"What did the Declaration of Independence do?", a:["announced our independence (from Great Britain)","declared our independence (from Great Britain)","said that the United States is free (from Great Britain)"], hint:"It was about separating from a European power.", category:"Principles of American Democracy"},
+  {id:9, q:"What are two rights in the Declaration of Independence?", a:["life","liberty","pursuit of happiness"], hint:"Name any 2 of the 3 unalienable rights.", category:"Principles of American Democracy"},
+  {id:10, q:"What is freedom of religion?", a:["You can practice any religion, or not practice a religion."], hint:"It's about what you can believe or not believe.", category:"Principles of American Democracy"},
+  {id:11, q:"What is the economic system in the United States?", a:["capitalist economy","market economy"], hint:"It's based on free markets.", category:"Principles of American Democracy"},
+  {id:12, q:"What is the 'rule of law'?", a:["Everyone must follow the law.","Leaders must obey the law.","Government must obey the law.","No one is above the law."], hint:"It means the law applies to everyone equally.", category:"Principles of American Democracy"},
+  {id:13, q:"Name one branch or part of the government.", a:["Congress","legislative","President","executive","the courts","judicial"], hint:"There are 3 branches.", category:"System of Government"},
+  {id:14, q:"What stops one branch of government from becoming too powerful?", a:["checks and balances","separation of powers"], hint:"Think about balance between branches.", category:"System of Government"},
+  {id:15, q:"Who is in charge of the executive branch?", a:["the President"], hint:"This person lives in the White House.", category:"System of Government"},
+  {id:16, q:"Who makes federal laws?", a:["Congress","Senate and House (of Representatives)","(U.S. or national) legislature"], hint:"They meet in the Capitol building.", category:"System of Government"},
+  {id:17, q:"What are the two parts of the U.S. Congress?", a:["the Senate and House (of Representatives)"], hint:"One has 100 members, the other has 435.", category:"System of Government"},
+  {id:18, q:"How many U.S. Senators are there?", a:["one hundred (100)"], hint:"Two per state.", category:"System of Government"},
+  {id:19, q:"We elect a U.S. Senator for how many years?", a:["six (6)"], hint:"It's longer than a House term but shorter than 10.", category:"System of Government"},
+  {id:20, q:"Who is one of your state's U.S. Senators now?", a:["(Answers will vary by state)"], hint:"Look up your state's current senators.", category:"System of Government"},
+  {id:21, q:"The House of Representatives has how many voting members?", a:["four hundred thirty-five (435)"], hint:"It's between 400 and 450.", category:"System of Government"},
+  {id:22, q:"We elect a U.S. Representative for how many years?", a:["two (2)"], hint:"It's the shortest federal term.", category:"System of Government"},
+  {id:23, q:"Name your U.S. Representative.", a:["(Answers will vary by district)"], hint:"Look up your congressional district.", category:"System of Government"},
+  {id:24, q:"Who does a U.S. Senator represent?", a:["all people of the state"], hint:"They represent everyone in their...", category:"System of Government"},
+  {id:25, q:"Why do some states have more Representatives than other states?", a:["(because of) the state's population","(because) they have more people","(because) some states have more people"], hint:"It's based on how many people live there.", category:"System of Government"},
+  {id:26, q:"We elect a President for how many years?", a:["four (4)"], hint:"Think about when elections happen.", category:"System of Government"},
+  {id:27, q:"In what month do we vote for President?", a:["November"], hint:"It's in the fall.", category:"System of Government"},
+  {id:28, q:"What is the name of the President of the United States now?", a:["Donald Trump","Trump"], hint:"The current president as of 2025.", category:"System of Government"},
+  {id:29, q:"What is the name of the Vice President of the United States now?", a:["JD Vance","Vance"], hint:"The current VP as of 2025.", category:"System of Government"},
+  {id:30, q:"If the President can no longer serve, who becomes President?", a:["the Vice President"], hint:"They're second in command.", category:"System of Government"},
+  {id:31, q:"If both the President and the Vice President can no longer serve, who becomes President?", a:["the Speaker of the House"], hint:"This person leads the House of Representatives.", category:"System of Government"},
+  {id:32, q:"Who is the Commander in Chief of the military?", a:["the President"], hint:"This person lives in the White House.", category:"System of Government"},
+  {id:33, q:"Who signs bills to become laws?", a:["the President"], hint:"The head of the executive branch.", category:"System of Government"},
+  {id:34, q:"Who vetoes bills?", a:["the President"], hint:"The same person who signs bills into law.", category:"System of Government"},
+  {id:35, q:"What does the President's Cabinet do?", a:["advises the President"], hint:"They give counsel to the leader.", category:"System of Government"},
+  {id:36, q:"What are two Cabinet-level positions?", a:["Secretary of Agriculture","Secretary of Commerce","Secretary of Defense","Secretary of Education","Secretary of Energy","Secretary of Health and Human Services","Secretary of Homeland Security","Secretary of Housing and Urban Development","Secretary of the Interior","Secretary of Labor","Secretary of State","Secretary of Transportation","Secretary of the Treasury","Secretary of Veterans Affairs","Attorney General","Vice President"], hint:"Think 'Secretary of...' — name any 2.", category:"System of Government"},
+  {id:37, q:"What does the judicial branch do?", a:["reviews laws","explains laws","resolves disputes (disagreements)","decides if a law goes against the Constitution"], hint:"Think about courts and judges.", category:"System of Government"},
+  {id:38, q:"What is the highest court in the United States?", a:["the Supreme Court"], hint:"It's the 'supreme' judicial body.", category:"System of Government"},
+  {id:39, q:"How many justices are on the Supreme Court?", a:["nine (9)"], hint:"It's a single digit number.", category:"System of Government"},
+  {id:40, q:"Who is the Chief Justice of the United States now?", a:["John Roberts","Roberts"], hint:"He's been Chief Justice since 2005.", category:"System of Government"},
+  {id:41, q:"Under our Constitution, some powers belong to the federal government. What is one power of the federal government?", a:["to print money","to declare war","to create an army","to make treaties"], hint:"Think about things only the national government can do.", category:"System of Government"},
+  {id:42, q:"Under our Constitution, some powers belong to the states. What is one power of the states?", a:["provide schooling and education","provide protection (police)","provide safety (fire departments)","give a driver's license","approve zoning and land use"], hint:"Think about local services.", category:"System of Government"},
+  {id:43, q:"Who is the Governor of your state now?", a:["(Answers will vary by state)"], hint:"Look up your state's current governor.", category:"System of Government"},
+  {id:44, q:"What is the capital of your state?", a:["(Answers will vary by state)"], hint:"It's not always the biggest city.", category:"System of Government"},
+  {id:45, q:"What are the two major political parties in the United States?", a:["Democratic and Republican"], hint:"Think about the two main parties.", category:"System of Government"},
+  {id:46, q:"What is the political party of the President now?", a:["Republican (Party)"], hint:"As of 2025.", category:"System of Government"},
+  {id:47, q:"What is the name of the Speaker of the House of Representatives now?", a:["Mike Johnson","Johnson"], hint:"As of 2025.", category:"System of Government"},
+  {id:48, q:"There are four amendments to the Constitution about who can vote. Describe one of them.", a:["Citizens eighteen (18) and older (can vote).","You don't have to pay (a poll tax) to vote.","Any citizen can vote. (Women and men can vote.)","A male citizen of any race (can vote)."], hint:"Think about expanding voting rights over time.", category:"Rights and Responsibilities"},
+  {id:49, q:"What is one responsibility that is only for United States citizens?", a:["serve on a jury","vote in a federal election"], hint:"Think about civic duties unique to citizens.", category:"Rights and Responsibilities"},
+  {id:50, q:"Name one right only for United States citizens.", a:["vote in a federal election","run for federal office"], hint:"Think about participating in government.", category:"Rights and Responsibilities"},
+  {id:51, q:"What are two rights of everyone living in the United States?", a:["freedom of expression","freedom of speech","freedom of assembly","freedom to petition the government","freedom of religion","the right to bear arms"], hint:"These rights apply to citizens AND non-citizens. Name 2.", category:"Rights and Responsibilities"},
+  {id:52, q:"What do we show loyalty to when we say the Pledge of Allegiance?", a:["the United States","the flag"], hint:"'I pledge allegiance to...'", category:"Rights and Responsibilities"},
+  {id:53, q:"What is one promise you make when you become a United States citizen?", a:["give up loyalty to other countries","defend the Constitution and laws of the United States","obey the laws of the United States","serve in the U.S. military (if needed)","serve (do important work for) the nation (if needed)","be loyal to the United States"], hint:"Think about the Oath of Allegiance.", category:"Rights and Responsibilities"},
+  {id:54, q:"How old do citizens have to be to vote for President?", a:["eighteen (18) and older"], hint:"Think about when you legally become an adult.", category:"Rights and Responsibilities"},
+  {id:55, q:"What are two ways that Americans can participate in their democracy?", a:["vote","join a political party","help with a campaign","join a civic group","join a community group","give an elected official your opinion on an issue","call Senators and Representatives","publicly support or oppose an issue or policy","run for office","write to a newspaper"], hint:"Think about ways to be involved in government. Name 2.", category:"Rights and Responsibilities"},
+  {id:56, q:"When is the last day you can send in federal income tax forms?", a:["April 15"], hint:"It's in the spring.", category:"Rights and Responsibilities"},
+  {id:57, q:"When must all men register for the Selective Service?", a:["at age eighteen (18)","between eighteen (18) and twenty-six (26)"], hint:"It's related to the military draft age.", category:"Rights and Responsibilities"},
+  {id:58, q:"What is one reason colonists came to America?", a:["freedom","political liberty","religious freedom","economic opportunity","practice their religion","escape persecution"], hint:"Think about what they were looking for or escaping.", category:"Colonial Period and Independence"},
+  {id:59, q:"Who lived in America before the Europeans arrived?", a:["American Indians","Native Americans"], hint:"The indigenous people.", category:"Colonial Period and Independence"},
+  {id:60, q:"What group of people was taken to America and sold as slaves?", a:["Africans","people from Africa"], hint:"They were brought from another continent.", category:"Colonial Period and Independence"},
+  {id:61, q:"Why did the colonists fight the British?", a:["because of high taxes (taxation without representation)","because the British army stayed in their houses (boarding, quartering)","because they didn't have self-government"], hint:"Think about taxes and freedom.", category:"Colonial Period and Independence"},
+  {id:62, q:"Who wrote the Declaration of Independence?", a:["(Thomas) Jefferson"], hint:"He later became the 3rd President.", category:"Colonial Period and Independence"},
+  {id:63, q:"When was the Declaration of Independence adopted?", a:["July 4, 1776"], hint:"We celebrate this day every year.", category:"Colonial Period and Independence"},
+  {id:64, q:"There were 13 original states. Name three.", a:["New Hampshire","Massachusetts","Rhode Island","Connecticut","New York","New Jersey","Pennsylvania","Delaware","Maryland","Virginia","North Carolina","South Carolina","Georgia"], hint:"They were all on the East Coast. Name 3.", category:"Colonial Period and Independence"},
+  {id:65, q:"What happened at the Constitutional Convention?", a:["The Constitution was written.","The Founding Fathers wrote the Constitution."], hint:"It took place in Philadelphia in 1787.", category:"Colonial Period and Independence"},
+  {id:66, q:"When was the Constitution written?", a:["1787"], hint:"It was in the 1780s.", category:"Colonial Period and Independence"},
+  {id:67, q:"The Federalist Papers supported the passage of the U.S. Constitution. Name one of the writers.", a:["(James) Madison","(Alexander) Hamilton","(John) Jay","Publius"], hint:"One of them is on the $10 bill.", category:"Colonial Period and Independence"},
+  {id:68, q:"What is one thing Benjamin Franklin is famous for?", a:["U.S. diplomat","oldest member of the Constitutional Convention","first Postmaster General of the United States","writer of 'Poor Richard's Almanac'","started the first free libraries"], hint:"He was a polymath — diplomat, inventor, writer.", category:"Colonial Period and Independence"},
+  {id:69, q:"Who is the 'Father of Our Country'?", a:["(George) Washington"], hint:"The first President.", category:"Colonial Period and Independence"},
+  {id:70, q:"Who was the first President?", a:["(George) Washington"], hint:"The 'Father of Our Country'.", category:"Colonial Period and Independence"},
+  {id:71, q:"What territory did the United States buy from France in 1803?", a:["the Louisiana Territory","Louisiana"], hint:"It doubled the size of the country.", category:"1800s"},
+  {id:72, q:"Name one war fought by the United States in the 1800s.", a:["War of 1812","Mexican-American War","Civil War","Spanish-American War"], hint:"There were 4 major wars. Name one.", category:"1800s"},
+  {id:73, q:"Name the U.S. war between the North and the South.", a:["the Civil War","the War between the States"], hint:"It was fought in the 1860s.", category:"1800s"},
+  {id:74, q:"Name one problem that led to the Civil War.", a:["slavery","economic reasons","states' rights"], hint:"The biggest issue was about human bondage.", category:"1800s"},
+  {id:75, q:"What was one important thing that Abraham Lincoln did?", a:["freed the slaves (Emancipation Proclamation)","saved (or preserved) the Union","led the United States during the Civil War"], hint:"The 16th President during the Civil War.", category:"1800s"},
+  {id:76, q:"What did the Emancipation Proclamation do?", a:["freed the slaves","freed slaves in the Confederacy","freed slaves in the Confederate states","freed slaves in most Southern states"], hint:"Lincoln issued it during the Civil War.", category:"1800s"},
+  {id:77, q:"What did Susan B. Anthony do?", a:["fought for women's rights","fought for civil rights"], hint:"She fought for a specific group's right to vote.", category:"1800s"},
+  {id:78, q:"Name one war fought by the United States in the 1900s.", a:["World War I","World War II","Korean War","Vietnam War","(Persian) Gulf War"], hint:"There were 5 major wars. Name one.", category:"Recent American History"},
+  {id:79, q:"Who was President during World War I?", a:["(Woodrow) Wilson"], hint:"His last name starts with W.", category:"Recent American History"},
+  {id:80, q:"Who was President during the Great Depression and World War II?", a:["(Franklin) Roosevelt"], hint:"He served 4 terms — the most of any president.", category:"Recent American History"},
+  {id:81, q:"Who did the United States fight in World War II?", a:["Japan, Germany, and Italy"], hint:"Three Axis powers.", category:"Recent American History"},
+  {id:82, q:"Before he was President, Eisenhower was a general. What war was he in?", a:["World War II"], hint:"The biggest war of the 20th century.", category:"Recent American History"},
+  {id:83, q:"During the Cold War, what was the main concern of the United States?", a:["Communism"], hint:"It was an ideological struggle.", category:"Recent American History"},
+  {id:84, q:"What movement tried to end racial discrimination?", a:["civil rights (movement)"], hint:"It happened mainly in the 1950s and 1960s.", category:"Recent American History"},
+  {id:85, q:"What did Martin Luther King, Jr. do?", a:["fought for civil rights","worked for equality for all Americans"], hint:"He had a famous dream.", category:"Recent American History"},
+  {id:86, q:"What major event happened on September 11, 2001, in the United States?", a:["Terrorists attacked the United States."], hint:"It changed airport security forever.", category:"Recent American History"},
+  {id:87, q:"Name one American Indian tribe in the United States.", a:["Cherokee","Navajo","Sioux","Chippewa","Choctaw","Pueblo","Apache","Iroquois","Creek","Blackfeet","Seminole","Cheyenne","Arawak","Shawnee","Mohegan","Huron","Oneida","Lakota","Crow","Teton","Hopi","Inuit"], hint:"There are many — name any one recognized tribe.", category:"Recent American History"},
+  {id:88, q:"Name one of the two longest rivers in the United States.", a:["Missouri (River)","Mississippi (River)"], hint:"Both start with 'M'.", category:"Geography"},
+  {id:89, q:"What ocean is on the West Coast of the United States?", a:["Pacific (Ocean)"], hint:"Think about California's coast.", category:"Geography"},
+  {id:90, q:"What ocean is on the East Coast of the United States?", a:["Atlantic (Ocean)"], hint:"Think about New York's coast.", category:"Geography"},
+  {id:91, q:"Name one U.S. territory.", a:["Puerto Rico","U.S. Virgin Islands","American Samoa","Northern Mariana Islands","Guam"], hint:"Islands that are part of the US but not states.", category:"Geography"},
+  {id:92, q:"Name one state that borders Canada.", a:["Maine","New Hampshire","Vermont","New York","Pennsylvania","Ohio","Michigan","Minnesota","North Dakota","Montana","Idaho","Washington","Alaska"], hint:"Northern states. Name any one.", category:"Geography"},
+  {id:93, q:"Name one state that borders Mexico.", a:["California","Arizona","New Mexico","Texas"], hint:"Southern border states. Name any one.", category:"Geography"},
+  {id:94, q:"What is the capital of the United States?", a:["Washington, D.C."], hint:"It's not a state.", category:"Geography"},
+  {id:95, q:"Where is the Statue of Liberty?", a:["New York (Harbor)","Liberty Island","New Jersey","near New York City","on the Hudson (River)"], hint:"You can see it from Manhattan.", category:"Geography"},
+  {id:96, q:"Why does the flag have 13 stripes?", a:["because there were 13 original colonies","because the stripes represent the original colonies"], hint:"Think about the original states.", category:"Symbols"},
+  {id:97, q:"Why does the flag have 50 stars?", a:["because there is one star for each state","because each star represents a state","because there are 50 states"], hint:"One for each...", category:"Symbols"},
+  {id:98, q:"What is the name of the national anthem?", a:["The Star-Spangled Banner"], hint:"It mentions a flag.", category:"Symbols"},
+  {id:99, q:"When do we celebrate Independence Day?", a:["July 4"], hint:"It's in the summer.", category:"Holidays"},
+  {id:100, q:"Name two national U.S. holidays.", a:["New Year's Day","Martin Luther King, Jr. Day","Presidents' Day","Memorial Day","Independence Day","Labor Day","Columbus Day","Veterans Day","Thanksgiving","Christmas"], hint:"Think about days when banks and post offices close. Name 2.", category:"Holidays"}
+];
+
+// ============ STATE ============
+const STORAGE_KEY = 'civics_flashcard_data';
+
+function loadStats() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch { return {}; }
+}
+
+function saveStats(stats) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+}
+
+function getQuestionStats(stats, id) {
+  return stats[id] || { correct: 0, fail: 0, lastSeen: null };
+}
+
+let stats = loadStats();
+let currentQuestion = null;
+let sessionCount = 0;
+let currentFilter = 'all';
+
+// ============ WEIGHTED RANDOM ============
+function pickQuestion() {
+  const weights = QUESTIONS.map(q => {
+    const s = getQuestionStats(stats, q.id);
+    const total = s.correct + s.fail;
+    if (total === 0) return 3; // unseen: moderate weight
+    const failRate = s.fail / total;
+    return 1 + failRate * 5; // 1 (always correct) to 6 (always wrong)
+  });
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * totalWeight;
+  for (let i = 0; i < QUESTIONS.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return QUESTIONS[i];
+  }
+  return QUESTIONS[QUESTIONS.length - 1];
+}
+
+// ============ FLASHCARD ============
+function nextQuestion() {
+  currentQuestion = pickQuestion();
+  sessionCount++;
+
+  document.getElementById('session-info').textContent = `Question ${sessionCount} this session`;
+  document.getElementById('q-number').textContent = `#${currentQuestion.id} — ${currentQuestion.category}`;
+  document.getElementById('q-text').textContent = currentQuestion.q;
+
+  // Reset UI
+  document.getElementById('hint-box').classList.remove('visible');
+  document.getElementById('answers-box').classList.remove('visible');
+  document.getElementById('pre-reveal-actions').style.display = 'flex';
+  document.getElementById('post-reveal-actions').style.display = 'none';
+  document.getElementById('next-action').style.display = 'none';
+  const banner = document.getElementById('result-banner');
+  banner.classList.remove('visible', 'correct', 'fail');
+}
+
+function showHint() {
+  const box = document.getElementById('hint-box');
+  box.textContent = currentQuestion.hint;
+  box.classList.add('visible');
+}
+
+function revealAnswer() {
+  const list = document.getElementById('answers-list');
+  list.innerHTML = '';
+  currentQuestion.a.forEach((ans, i) => {
+    const item = document.createElement('div');
+    item.className = 'answer-item';
+    item.innerHTML = `<input type="checkbox" id="ans-${i}"><label for="ans-${i}">${ans}</label>`;
+    item.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        const cb = item.querySelector('input');
+        cb.checked = !cb.checked;
+      }
+      item.classList.toggle('selected', item.querySelector('input').checked);
+    });
+    list.appendChild(item);
+  });
+
+  document.getElementById('answers-box').classList.add('visible');
+  document.getElementById('pre-reveal-actions').style.display = 'none';
+  document.getElementById('post-reveal-actions').style.display = 'flex';
+}
+
+function recordResult(correct) {
+  const id = currentQuestion.id;
+  const s = getQuestionStats(stats, id);
+  if (correct) s.correct++;
+  else s.fail++;
+  s.lastSeen = new Date().toISOString();
+  stats[id] = s;
+  saveStats(stats);
+
+  document.getElementById('post-reveal-actions').style.display = 'none';
+
+  const banner = document.getElementById('result-banner');
+  banner.textContent = correct ? 'Correct!' : 'Keep studying this one!';
+  banner.className = 'result-banner visible ' + (correct ? 'correct' : 'fail');
+
+  document.getElementById('next-action').style.display = 'flex';
+}
+
+// ============ REPORTS ============
+function renderReports() {
+  // Stats
+  let totalCorrect = 0, totalFail = 0;
+  Object.values(stats).forEach(s => { totalCorrect += s.correct; totalFail += s.fail; });
+  const totalAttempted = Object.keys(stats).length;
+  const totalAnswers = totalCorrect + totalFail;
+
+  document.getElementById('stat-total').textContent = totalAttempted;
+  document.getElementById('stat-correct').textContent = totalCorrect;
+  document.getElementById('stat-pct').textContent = totalAnswers > 0 ? Math.round(totalCorrect / totalAnswers * 100) + '%' : '0%';
+
+  // List
+  const list = document.getElementById('report-list');
+  list.innerHTML = '';
+
+  let questions = [...QUESTIONS];
+
+  if (currentFilter === 'most-missed') {
+    questions = questions.filter(q => stats[q.id] && stats[q.id].fail > 0);
+    questions.sort((a, b) => (stats[b.id]?.fail || 0) - (stats[a.id]?.fail || 0));
+  } else if (currentFilter === 'most-correct') {
+    questions = questions.filter(q => stats[q.id] && stats[q.id].correct > 0);
+    questions.sort((a, b) => (stats[b.id]?.correct || 0) - (stats[a.id]?.correct || 0));
+  } else if (currentFilter === 'unseen') {
+    questions = questions.filter(q => !stats[q.id]);
+  } else {
+    // All — sort by most attempts
+    questions.sort((a, b) => {
+      const sa = stats[a.id], sb = stats[b.id];
+      const ta = sa ? sa.correct + sa.fail : 0;
+      const tb = sb ? sb.correct + sb.fail : 0;
+      return tb - ta;
+    });
+  }
+
+  if (questions.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">No questions in this category yet.</div>';
+    return;
+  }
+
+  questions.forEach(q => {
+    const s = getQuestionStats(stats, q.id);
+    const item = document.createElement('div');
+    item.className = 'report-item';
+    const total = s.correct + s.fail;
+    const lastSeen = s.lastSeen ? new Date(s.lastSeen).toLocaleDateString() : 'Never';
+    item.innerHTML = `
+      <div class="report-q">#${q.id}: ${q.q}</div>
+      <div class="report-stats">
+        <span class="correct-stat">${s.correct} correct</span>
+        <span class="fail-stat">${s.fail} wrong</span>
+        <span>Last: ${lastSeen}</span>
+      </div>`;
+    list.appendChild(item);
+  });
+}
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderReports();
+}
+
+// ============ NAVIGATION ============
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(name + '-screen').classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (name === 'reports') renderReports();
+}
+
+// ============ SETTINGS ============
+function exportData() {
+  const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'civics-flashcard-progress.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      stats = imported;
+      saveStats(stats);
+      alert('Progress imported successfully!');
+    } catch {
+      alert('Invalid file format.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetData() {
+  if (confirm('Are you sure? This will delete all your progress.')) {
+    stats = {};
+    saveStats(stats);
+    alert('Progress reset.');
+  }
+}
+
+// ============ INIT ============
+nextQuestion();
+</script>
+</body>
+</html>
